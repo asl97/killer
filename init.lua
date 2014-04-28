@@ -3,6 +3,7 @@ minetest.register_node("killer:killer", {
 		groups = {crumbly=1},
 		description = "[!] Killer [!]",
 		light_source = 14,
+		drop = { max_items = 0, items = {} }
 })
 
 minetest.register_node("killer:antikiller", {
@@ -59,8 +60,12 @@ minetest.register_abm({
 	interval = 5,
 	action = function(pos)
 		for i=0, 5, 1 do
-			if minetest.find_node_near(pos, 5, {"killer:killer"}) then
-				minetest.remove_node(minetest.find_node_near(pos, 5, {"killer:killer"}))
+			local node_pos
+			node_pos = minetest.find_node_near(pos, 5, {"killer:killer"})
+			if node_pos then
+				minetest.remove_node(node_pos)
+			else
+				break
 			end
 		end
 	end,
@@ -71,22 +76,25 @@ minetest.register_abm({
 	chance = 1,
 	interval = 1,
 	action = function(pos)
-		local p = {
-			pos1 = {x=pos.x, y=pos.y+1, z=pos.z},
-			pos2 = {x=pos.x, y=pos.y-1, z=pos.z},
-			pos3 = {x=pos.x+1, y=pos.y, z=pos.z},
-			pos4 = {x=pos.x-1, y=pos.y, z=pos.z},
-			pos5 = {x=pos.x, y=pos.y, z=pos.z+1},
-			pos6 = {x=pos.x, y=pos.y, z=pos.z-1},
-			}
-		local is = false
-		for k, v in pairs(p) do
-			if minetest.get_node(v).name == "killer:killer" then
-				minetest.set_node(v, {name="killer:antikiller"})
-				is = true
+		check_for_killer = function(pos)
+			local is
+			is = false
+			for _, obj in pairs(minetest.get_objects_inside_radius(pos,2)) do
+				if obj:is_player() then
+					obj:set_hp(math.min(math.max(obj:get_hp()-5,0),math.ceil(obj:get_hp()/2)))
+				end
 			end
+			for i=0, 5, 1 do
+				local node_pos
+				node_pos = minetest.find_node_near(pos, 2, {"killer:killer"})
+				if node_pos then
+					minetest.set_node(node_pos, {name="killer:antikiller"})
+					is = true
+				end
+			end
+			return is
 		end
-		if not is then
+		if not check_for_killer(pos) then
 			minetest.remove_node(pos)
 		end
 	end,
@@ -106,10 +114,12 @@ minetest.register_abm({
 				y=pos.y+math.random(-1, 1),
 				z=pos.z+math.random(-1, 1),
 			}
-			local t = {
-				"killer:novirusblock",
-				}
-			if minetest.get_node(p).name ~= "killer:killer" and not contain(t, minetest.get_node(p).name) then
+		for _, obj in pairs(minetest.get_objects_inside_radius(pos,2)) do
+			if obj:is_player() then
+				obj:set_hp(obj:get_hp()-3)
+			end
+		end
+		if minetest.get_node(p).name ~= "killer:killer" and minetest.get_node(p).name ~= "killer:novirusblock" then
 				minetest.set_node(p, {name="killer:killer"})
 			end
 		end
